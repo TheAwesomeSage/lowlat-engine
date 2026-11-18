@@ -1,0 +1,7 @@
+﻿queue: producer on core 2, consumer on core 4 (-1 = not pinned)
+throughput/s = 5M messages pushed flat out; latency = push() to pop() returning, producer paced at 5 us
+(latency uses the TSC across two cores, which needs an invariant TSC; FIFO order is checked)
+
+stage                           samples   throughput/s     p50 ns     p99 ns   p99.9 ns       max ns
+spsc lock-free                   200000      106712197      213.1      282.5    53084.2     599175.7
+mutex queue (baseline)           200000        6538285      894.6    74966.0   258865.1    9806641.4
