@@ -113,6 +113,12 @@ Reading it: cost rises with order size because bigger slices walk further into t
 parent is small relative to market volume, so it pays more than the time-sliced algos, and at 10M shares it only
 completes 31% because the 10% cap binds. Arrival is the mid price when the window opened.
 
+## Profiling
+
+`docs/profiling.md` and `scripts/profile.sh` hold the gprof profile that motivated the ladder: in the `std::map` book
+about a third of the time is tree insert, erase and allocation, which the flat array removes. The order table
+(`std::unordered_map`) is what remains.
+
 ## Limitations
 
 - The feed is synthetic: one instrument, simple random order flow, no real queue dynamics. Numbers describe this

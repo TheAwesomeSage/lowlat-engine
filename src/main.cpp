@@ -5,7 +5,8 @@
 //   engine book  [FILE]              map book vs price-ladder book + equivalence check
 //   engine queue [--cores A,B]       SPSC queue vs mutex queue
 //   engine replay [FILE]             recorded file -> parse -> book, with a determinism check
-//   engine algos [FILE]              TWAP / VWAP / POV: slippage, tick-to-order latency, determinism
+//   engine profile map|ladder [FILE] one book only, for use under a profiler
+//   engine algos [FILE]             TWAP / VWAP / POV: slippage, tick-to-order latency, determinism
 #include <atomic>
 #include <chrono>
 #include <cstdio>
@@ -377,6 +378,36 @@ static int cmd_replay(int argc, char** argv) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Runs ONLY one book implementation for several passes, so a profiler's output is not a mix of
+// both. Usage: engine profile map|ladder [FILE] [PASSES]   (see docs/profiling.md and scripts/profile.sh)
+static int cmd_profile(int argc, char** argv) {
+  if (argc < 3) {
+    std::fprintf(stderr, "usage: engine profile map|ladder [FILE]\n");
+    return 1;
+  }
+  bool use_map = std::strcmp(argv[2], "map") == 0;
+  Replayer rp;
+  if (!load_or_complain(rp, argc >= 4 ? argv[3] : kDefaultFeed)) return 1;
+  std::vector<Event> evs = rp.parse_all();
+  const int passes = argc >= 5 ? std::atoi(argv[4]) : 8;
+  uint64_t sink = 0;
+  auto a = sc::now();
+  for (int rep = 0; rep < passes; ++rep) {
+    if (use_map) {
+      MapBook b = make_map_book();
+      for (const Event& e : evs) sink += b.apply(e).qty;
+    } else {
+      LadderBook b = make_ladder_book();
+      for (const Event& e : evs) sink += b.apply(e).qty;
+    }
+  }
+  double s = secs(a, sc::now());
+  std::printf("%s book, %d passes x %zu events: %.2f M events/s (checksum %llu)\n", use_map ? "map" : "ladder",
+              passes, evs.size(), double(size_t(passes) * evs.size()) / s / 1e6, (unsigned long long)sink);
+  return 0;
+}
+
+// ---------------------------------------------------------------------------------------------
 int main(int argc, char** argv) {
   if (argc < 2) {
     std::fprintf(stderr, "usage: engine <info|gen|parse|book|queue|replay|algos> [options]\n");
@@ -389,6 +420,7 @@ int main(int argc, char** argv) {
   if (c == "book") return cmd_book(argc, argv);
   if (c == "queue") return cmd_queue(argc, argv);
   if (c == "replay") return cmd_replay(argc, argv);
+  if (c == "profile") return cmd_profile(argc, argv);
   if (c == "algos") return cmd_algos(argc, argv);
   std::fprintf(stderr, "unknown command: %s\n", c.c_str());
   return 1;
