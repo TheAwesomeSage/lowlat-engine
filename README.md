@@ -1,6 +1,6 @@
 # lowlat-engine
 
-A small, venue-agnostic market-data and execution engine in C++20, with latency measured at every stage.
+A small, venue-agnostic market-data and execution engine in C++20, with latency measured at each stage.
 
 Pipeline: **ITCH 5.0 parser -> order book -> lock-free SPSC queue -> TWAP / VWAP / POV execution algos**, all
 driven by a **deterministic recorder/replayer** and timed with a calibrated `rdtscp` harness.
