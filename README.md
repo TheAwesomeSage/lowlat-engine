@@ -24,6 +24,7 @@ Or step by step:
 ./build/engine parse data/feed.bin
 ./build/engine book  data/feed.bin
 ./build/engine queue
+./build/engine replay data/feed.bin
 ./build/engine algos data/feed.bin
 ```
 
@@ -86,13 +87,14 @@ timer overhead about 20 ns. Feed: 2,000,000 synthetic messages (seed 1). Full ou
 
 | Stage | Throughput | p50 | p99 | p99.9 |
 | --- | --- | --- | --- | --- |
-| ITCH parse | 84.3 M msg/s | 15.6 ns | 54.5 ns | 160 ns |
-| Book, `std::map` reference | 13.9 M events/s | 74 ns | 204 ns | 359 ns |
-| Book, price ladder | 21.9 M events/s | 55 ns | 185 ns | 336 ns |
-| SPSC queue (hand-off latency) | 106.7 M msg/s | 213 ns | 283 ns | 53 us |
-| Mutex queue (hand-off latency) | 6.5 M msg/s | 895 ns | 75 us | 259 us |
-| Algo tick-to-decision (every event) | n/a | 56 ns | 188 ns | 352 ns |
-| Algo tick-to-order (events that sent an order) | n/a | 117 ns | 549 ns | 1,058 ns |
+| ITCH parse | 82.2 M msg/s | 15.2 ns | 41.3 ns | 126 ns |
+| Book, `std::map` reference | 14.1 M events/s | 72 ns | 201 ns | 352 ns |
+| Book, price ladder | 22.2 M events/s | 53 ns | 174 ns | 303 ns |
+| SPSC queue (hand-off latency) | 109.9 M msg/s | 206 ns | 236 ns | 45 us |
+| Mutex queue (hand-off latency) | 6.7 M msg/s | 895 ns | 1.8 us | 38 us |
+| Replay (file frame -> parse -> book) | 11.5 M msg/s | 62 ns | 189 ns | 344 ns |
+| Algo tick-to-decision (every event) | n/a | 51 ns | 184 ns | 348 ns |
+| Algo tick-to-order (events that sent an order) | n/a | 107 ns | 565 ns | 1,023 ns |
 
 Queue latency is measured with the producer paced at one message per 5 us; throughput is 5M messages pushed flat out.
 Tail figures (p99.9 and max) include OS scheduling noise: threads are pinned to cores and run at raised priority, but

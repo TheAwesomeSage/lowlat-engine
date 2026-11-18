@@ -1,6 +1,6 @@
-﻿parser: 2000000 messages, TSC 2.496 GHz, timer overhead 19.6 ns
+parser: 2000000 messages, TSC 2.496 GHz, timer overhead 19.6 ns
 
 stage                           samples   throughput/s     p50 ns     p99 ns   p99.9 ns       max ns
-itch parse                      2000000       84296420       15.6       54.5      160.3     306063.8
+itch parse                      2000000       82159480       15.2       41.3      125.8     304617.6
 
-throughput = 84.30 M msg/s   p99 = 54.5 ns per message   (checksum 10479571318148)
+throughput = 82.16 M msg/s   p99 = 41.3 ns per message   (checksum 10479571318148)

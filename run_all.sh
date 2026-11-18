@@ -11,4 +11,5 @@ cd "$(dirname "$0")"
 ./build/engine parse data/feed.bin | tee results/parse.txt
 ./build/engine book  data/feed.bin | tee results/book.txt
 ./build/engine queue               | tee results/queue.txt
+./build/engine replay data/feed.bin | tee results/replay.txt
 ./build/engine algos data/feed.bin | tee results/algos.txt

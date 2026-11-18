@@ -4,6 +4,7 @@
 //   engine parse [FILE]              ITCH parser: throughput and per-message latency
 //   engine book  [FILE]              map book vs price-ladder book + equivalence check
 //   engine queue [--cores A,B]       SPSC queue vs mutex queue
+//   engine replay [FILE]             recorded file -> parse -> book, with a determinism check
 //   engine algos [FILE]              TWAP / VWAP / POV: slippage, tick-to-order latency, determinism
 #include <atomic>
 #include <chrono>
@@ -338,9 +339,47 @@ static int cmd_algos(int argc, char** argv) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Replay stage: the recorded file is read back frame by frame, each frame is parsed and applied to
+// the ladder book. This is the recorder/replayer path end to end. Two passes must give the same
+// final book (determinism).
+static int cmd_replay(int argc, char** argv) {
+  Replayer rp;
+  if (!load_or_complain(rp, feed_path(argc, argv))) return 1;
+  Clock clk = Clock::calibrate();
+  const size_t n = rp.size();
+  std::printf("replay: %zu frames\n\n", n);
+
+  auto pass = [&](std::vector<uint64_t>* cyc) {
+    LadderBook b = make_ladder_book();
+    for (size_t i = 0; i < n; ++i) {
+      Event e;
+      uint64_t t0 = t_begin();
+      if (itch::parse(rp.msg(i), rp.len(i), e) == itch::Result::Ok) b.apply(e);
+      if (cyc) (*cyc)[i] = t_end() - t0;
+    }
+    return b.state_hash();
+  };
+
+  double best = 1e30;
+  uint64_t h1 = 0;
+  for (int rep = 0; rep < 3; ++rep) {
+    auto a = sc::now();
+    h1 = pass(nullptr);
+    best = std::min(best, secs(a, sc::now()));
+  }
+  std::vector<uint64_t> cyc(n);
+  uint64_t h2 = pass(&cyc);
+  print_header();
+  print_row("replay (parse + book)", n, double(n) / best, summarize(cyc, clk));
+  std::printf("\ndeterminism: final book hash pass A %016llx, pass B %016llx -> %s\n", (unsigned long long)h1,
+              (unsigned long long)h2, h1 == h2 ? "IDENTICAL" : "DIFFERENT");
+  return h1 == h2 ? 0 : 2;
+}
+
+// ---------------------------------------------------------------------------------------------
 int main(int argc, char** argv) {
   if (argc < 2) {
-    std::fprintf(stderr, "usage: engine <info|gen|parse|book|queue|algos> [options]\n");
+    std::fprintf(stderr, "usage: engine <info|gen|parse|book|queue|replay|algos> [options]\n");
     return 1;
   }
   std::string c = argv[1];
@@ -349,6 +388,7 @@ int main(int argc, char** argv) {
   if (c == "parse") return cmd_parse(argc, argv);
   if (c == "book") return cmd_book(argc, argv);
   if (c == "queue") return cmd_queue(argc, argv);
+  if (c == "replay") return cmd_replay(argc, argv);
   if (c == "algos") return cmd_algos(argc, argv);
   std::fprintf(stderr, "unknown command: %s\n", c.c_str());
   return 1;

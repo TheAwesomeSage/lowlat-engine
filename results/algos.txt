@@ -1,4 +1,4 @@
-﻿algos: 2000000 events, window 30.0 s of exchange time (300 slices), buy side
+algos: 2000000 events, window 30.0 s of exchange time (300 slices), buy side
 
 algo         parent   filled     avg px   mkt VWAP    slip vs arr   slip vs VWAP  children
              shares        %          $          $            bps            bps          
@@ -22,8 +22,8 @@ slippage: positive bps = we paid more than the benchmark (arrival = mid when the
 POV is not forced to complete; its 'filled %' shows what the participation cap allowed.
 
 stage                           samples   throughput/s     p50 ns     p99 ns   p99.9 ns       max ns
-tick-to-decision (all)         15957312              0       56.1      187.9      352.2     282161.7
-tick-to-order                      2769              0      117.0      549.3     1058.1       7775.6
+tick-to-decision (all)         15957312              0       51.3      183.9      348.2    1040362.9
+tick-to-order                      2769              0      106.6      564.9     1022.8       1834.9
 
 tick-to-decision = book update + algo.decide() for every market event in the window.
 tick-to-order    = the same, plus the book-walking fill, for events that sent an order.

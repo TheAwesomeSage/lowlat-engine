@@ -1,8 +1,8 @@
-﻿book: 2000000 events
+book: 2000000 events
 
 stage                           samples   throughput/s     p50 ns     p99 ns   p99.9 ns       max ns
-map book (reference)            2000000       13871819       74.1      203.9      359.4     295769.0
-ladder book                     2000000       21872409       55.3      184.7      335.7     144192.0
+map book (reference)            2000000       14125341       71.7      200.7      352.2     144256.9
+ladder book                     2000000       22158848       52.9      174.3      302.5     240395.6
 
 equivalence vs reference book: 2000000 events, 201 full-depth checks, 0 mismatches -> IDENTICAL
 rejected by ladder (out of range / off tick): 0, unknown ids: 0

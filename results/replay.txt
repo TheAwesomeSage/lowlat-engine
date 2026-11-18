@@ -1,0 +1,6 @@
+replay: 2000000 frames
+
+stage                           samples   throughput/s     p50 ns     p99 ns   p99.9 ns       max ns
+replay (parse + book)           2000000       11485315       61.7      188.7      344.2    1157859.4
+
+determinism: final book hash pass A 6b48700125916b68, pass B 6b48700125916b68 -> IDENTICAL
