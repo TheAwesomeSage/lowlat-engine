@@ -159,6 +159,11 @@ class LadderLevels {
     return d;
   }
 
+  // Array position of an accepted price, and the number of positions: lets a caller keep its own per-level
+  // overlay in a flat array of the same shape (the simulator's market impact feedback does).
+  size_t slot(uint32_t px) const { return size_t(idx(px)); }
+  size_t slots() const { return size_t(n_); }
+
  private:
   int64_t idx(uint32_t px) const { return int64_t((px - min_) / Tick); }
   uint32_t price(int64_t i) const { return min_ + uint32_t(i) * Tick; }

@@ -269,6 +269,20 @@ static void test_algos() {
   Twap tb(big);
   RunResult rb = run_algo(evs, tb);
   CHECK(rb.slip_arrival_bps >= r1.slip_arrival_bps);
+
+  // Market impact feedback: taken liquidity stays taken, so it can only make fills worse or smaller,
+  // and a large order must feel it. It stays deterministic.
+  Twap ni(big), wi(big), wi2(big);
+  RunResult r_off = run_algo(evs, ni, false), r_on = run_algo(evs, wi, true), r_on2 = run_algo(evs, wi2, true);
+  CHECK(r_on.filled <= r_off.filled);
+  // Same shares filled -> they cannot have been cheaper. (If fewer filled, the average is over the shallower
+  // fills only, so it is not comparable.) And the order must visibly feel the impact.
+  if (r_on.filled == r_off.filled) CHECK(r_on.slip_arrival_bps >= r_off.slip_arrival_bps);
+  CHECK(r_on.slip_arrival_bps > r_off.slip_arrival_bps || r_on.filled < r_off.filled);
+  CHECK(r_on.hash == r_on2.hash);
+  // A small order that fits in the top levels is hardly affected.
+  Twap sa(p), sb(p);
+  CHECK(run_algo(evs, sa, true).filled == run_algo(evs, sb, false).filled);
   std::filesystem::remove(path);
 }
 

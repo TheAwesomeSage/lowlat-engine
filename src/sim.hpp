@@ -4,8 +4,13 @@
 // Fill model: a child order is a market order. It takes the best opposite-side level first, then the
 // next one, and so on, at each level's displayed price, until it is filled or the book runs out
 // (a partial fill; the shortfall carries into the next slice).
-// Simplification (stated, not hidden): our own fills do not remove liquidity from the replayed book
-// and do not move the market - the feed is historical, so there is no market impact feedback.
+// Market impact feedback (on by default): shares we take stay taken. We remember how many shares we have
+// removed at each price (an overlay; the replayed book itself is never edited) and subtract them from the
+// displayed depth the next time we walk. So a large order, or many slices, eat into the same levels and
+// later fills get worse prices. When the market's own trades or cancels shrink a level below what we took,
+// our taken shares are treated as already gone from it.
+// Simplification (stated, not hidden): taken liquidity never comes back. Real books refill, so this
+// overstates impact. The feed is historical, so the other traders also do not react to us.
 #pragma once
 #include <algorithm>
 #include <cstdint>
@@ -29,11 +34,12 @@ struct RunResult {
   std::vector<uint64_t> order_cycles;   // apply + decide + fill walk, only events that sent an order
 };
 
-inline RunResult run_algo(const std::vector<Event>& evs, Algo& algo) {
+inline RunResult run_algo(const std::vector<Event>& evs, Algo& algo, bool impact = true) {
   const Params& P = algo.params();
   LadderBook book = make_ladder_book();
   RunResult R;
   R.parent = P.qty;
+  std::vector<uint64_t> taken(book.levels().slots(), 0);  // per ladder slot: shares we have already removed
 
   uint64_t h = 1469598103934665603ull;
   auto mix = [&](uint64_t v) {
@@ -68,7 +74,14 @@ inline RunResult run_algo(const std::vector<Event>& evs, Algo& algo) {
     if (sent > 0) {
       uint64_t rem = sent, got = 0, notl = 0;
       book.levels().walk(opp, [&](uint32_t px, uint64_t lvl) {
+        uint64_t* mine = nullptr;
+        if (impact) {
+          mine = &taken[book.levels().slot(px)];
+          if (*mine > lvl) *mine = lvl;  // the market already consumed some of what we took
+          lvl -= *mine;                  // depth still available to us
+        }
         uint64_t take = std::min(rem, lvl);
+        if (mine) *mine += take;
         notl += take * px;
         got += take;
         rem -= take;

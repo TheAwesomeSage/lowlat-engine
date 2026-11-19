@@ -317,7 +317,24 @@ static int cmd_algos(int argc, char** argv) {
     std::printf("\n");
   }
   std::printf("slippage: positive bps = we paid more than the benchmark (arrival = mid when the window opened).\n");
-  std::printf("POV is not forced to complete; its 'filled %%' shows what the participation cap allowed.\n\n");
+  std::printf("POV is not forced to complete; its 'filled %%' shows what the participation cap allowed.\n");
+  std::printf("The table above includes market impact feedback: shares we take stay taken, so later slices walk deeper.\n\n");
+
+  // Same TWAP orders with and without impact feedback: the difference is the cost of our own footprint.
+  std::printf("TWAP slippage vs arrival, with and without impact feedback:\n");
+  std::printf("%12s %14s %14s %10s\n", "parent", "no impact bps", "impact bps", "added bps");
+  for (uint64_t sz : sizes) {
+    Params p;
+    p.side = Side::Buy;
+    p.qty = sz;
+    p.start_ns = start;
+    p.end_ns = end;
+    p.slice_ns = slice;
+    Twap a(p), b(p);
+    double s0 = run_algo(evs, a, false).slip_arrival_bps, s1 = run_algo(evs, b, true).slip_arrival_bps;
+    std::printf("%12llu %14.2f %14.2f %10.2f\n", (unsigned long long)sz, s0, s1, s1 - s0);
+  }
+  std::printf("\n");
 
   print_header();
   size_t nt = all_ticks.size(), no = all_orders.size();
