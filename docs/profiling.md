@@ -34,8 +34,29 @@ hash-table insert count). They are left out above; they account for the remainin
    into and erasing from a red-black tree: pointer chasing, a heap allocation per new price level, and rebalancing.
 2. In the ladder, those two rows disappear. A price becomes an array index, so a level update is one indexed add
    inside `apply()`, with no allocation and no tree walk.
-3. What is left is the order table, a `std::unordered_map`: about 10-16% of the ladder's time (insert plus lookup) and a
-   smaller visible share of the map book's. It is now the next obvious thing to optimise, and it is why the
+3. What is left is the order table, a `std::unordered_map`. gprof shows 10-16% of the ladder's time, but it
+   under-reports (see the perf cross-check below, about 42%). It is now the next obvious thing to optimise, and it is why the
    end-to-end gain is about 1.5x rather than larger.
 
 Next step if this were pursued: replace the `unordered_map` order table with a flat open-addressing table.
+
+## Cross-check with perf (sampling profiler)
+
+gprof instruments the code and I had to switch inlining off for it, so I repeated the measurement with `perf`
+(`scripts/perf.sh`, `perf record -F 999 -e cpu-clock`). It samples about 1000 times a second and profiles the normal
+`-O2` build with inlining left on. One run per book, 40 passes over the 2M-message feed; read the numbers as "about".
+
+| `std::map` book | % of samples | | Ladder book | % of samples |
+| --- | --- | --- | --- | --- |
+| `OrderBook::apply` | 21 | | `OrderBook::apply` (level updates inlined in it) | 42 |
+| `MapLevels::sub` | 20 | | `unordered_map` rows (3, summed) | 42 |
+| `OrderBook::add_order` (includes the tree insert) | 19 | | `malloc` / `free` / `operator new` | about 7 |
+| `unordered_map` rows (2, summed) | 30 | | | |
+| `malloc` / `free` / `operator new` | about 4 | | | |
+
+- It agrees with gprof on the main point: tree insert, erase and allocation are roughly 40% of the map book, and the
+  ladder removes the `sub` and `add_order` rows.
+- It disagrees on the order table. gprof showed it as 10-16% of the ladder's time, but gprof mislabels the libstdc++
+  hash-table helpers and those rows were left out. perf resolves them and puts the order table at about 42% of the
+  ladder book. So the order table is the largest remaining cost, which strengthens the "flat hash table next" conclusion.
+- With inlining on, a function's share includes code inlined into it, so the `apply` rows hide some tree and hash work.
